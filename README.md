@@ -12,7 +12,29 @@ and full camera controls, similar to Panasonic PTZ Control Center.
    saved setups, USB joystick / gamepad / Stream Deck.
 4. **iPad version** – touch-friendly controls from the same codebase.
 
-## Scanning cameras
+## Running the app
+
+1. Install Xcode 16 or newer from the Mac App Store.
+2. Clone this repo and open `LUPTZControl.xcodeproj`.
+3. Press **Run** (⌘R). The first time, macOS asks to allow access to devices on your local
+   network. Click **Allow**, or the app can't reach the cameras. (If you missed it:
+   System Settings → Privacy & Security → Local Network.)
+4. The **Find Cameras** window opens and scans your network. Select the cameras and click **Add**.
+
+### What's in the app (step 2)
+
+- Find Cameras: scans a network range for Panasonic cameras, handles cameras that need a login,
+  or add one by IP address.
+- Live video from each camera (MJPEG over HTTP, falling back to JPEG stills).
+- Pan/tilt joystick with a speed limit, zoom rocker, auto/manual focus with a focus rocker.
+- 24 presets: click to recall, turn on Save mode and click to store.
+- Power on/standby and red tally.
+- Camera list on the left, saved between launches. Passwords are kept in the macOS Keychain.
+
+Control uses Panasonic's HTTP CGI commands (`/cgi-bin/aw_ptz`, `/cgi-bin/aw_cam`), sent no faster
+than every 130 ms per camera as Panasonic recommends.
+
+## Scanning cameras from Terminal (optional)
 
 ```bash
 bash tools/scan-cameras.sh 192.168.10              # first three numbers of a camera IP
