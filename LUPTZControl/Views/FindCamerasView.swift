@@ -13,6 +13,7 @@ struct FindCamerasView: View {
     @State private var showLogin = false
     @State private var manualHost = ""
     @State private var manualMessage: String?
+    @State private var hasScanned = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -71,8 +72,10 @@ struct FindCamerasView: View {
             .overlay {
                 if scanner.found.isEmpty && !scanner.isScanning {
                     VStack(spacing: 6) {
-                        Text("No cameras found yet").foregroundStyle(.secondary)
-                        Text("Check the network numbers above match your cameras, then press Scan.")
+                        Text(hasScanned ? "No cameras found" : "Not scanned yet").foregroundStyle(.secondary)
+                        Text(hasScanned
+                             ? "Check the network numbers above match your cameras, then press Scan again."
+                             : "Check the network numbers above match your cameras, then press Scan.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -105,11 +108,11 @@ struct FindCamerasView: View {
         }
         .padding(20)
         .frame(width: 620, height: 540)
-        .task { startScan() }
     }
 
     private func startScan() {
         selected = []
+        hasScanned = true
         Task {
             await scanner.scan(username: username, password: password)
             // Pre-select everything that isn't already added.
