@@ -21,15 +21,19 @@ final class VideoFeed: ObservableObject {
     /// MJPEG addresses used by Panasonic AW cameras, best first.
     private var candidates: [(String, String)] {
         let h = client.host
-        return [
-            ("MJPEG 1280×720", "http://\(h)/cgi-bin/mjpeg?resolution=1280x720&quality=1"),
-            ("MJPEG 640×360", "http://\(h)/cgi-bin/mjpeg?resolution=640x360&quality=1"),
+        let large = ("MJPEG 1280×720", "http://\(h)/cgi-bin/mjpeg?resolution=1280x720&quality=1")
+        let small = ("MJPEG 640×360", "http://\(h)/cgi-bin/mjpeg?resolution=640x360&quality=1")
+        return (preferSmall ? [small, large] : [large, small]) + [
             ("MJPEG stream 1", "http://\(h)/cgi-bin/mjpeg?stream=1"),
         ]
     }
 
-    init(client: PanasonicClient) {
+    /// Grid tiles use the smaller stream to save network and CPU.
+    private let preferSmall: Bool
+
+    init(client: PanasonicClient, preferSmall: Bool = false) {
         self.client = client
+        self.preferSmall = preferSmall
     }
 
     func start() {

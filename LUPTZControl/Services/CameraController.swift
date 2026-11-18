@@ -48,8 +48,9 @@ final class CameraController: ObservableObject {
         video = VideoFeed(client: client)
     }
 
-    func start() {
-        video.start()
+    /// withVideo: false when the video is shown elsewhere (the grid view).
+    func start(withVideo: Bool = true) {
+        if withVideo { video.start() }
         guard loop == nil else { return }
         loop = Task { [weak self] in
             await self?.refresh()
