@@ -1,0 +1,58 @@
+name: Build Mac app
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild -project LUPTZControl.xcodeproj \
+            -target LUPTZControl \
+            -configuration Release \
+            CODE_SIGN_IDENTITY=- \
+            ONLY_ACTIVE_ARCH=NO \
+            build | tee build.log | grep -E "error:|warning:|BUILD" || true
+          test -d "build/Release/LUPTZControl.app"
+
+      - name: Upload build log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+
+      - name: Zip app
+        run: |
+          cd build/Release
+          ditto -c -k --keepParent "LUPTZControl.app" "$GITHUB_WORKSPACE/LUPTZControl.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LUPTZControl
+          path: LUPTZControl.zip
+
+      - name: Publish "latest" release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest LUPTZControl.zip \
+            --title "LU PTZ Control (latest build)" \
+            --notes "Built from ${GITHUB_SHA::7}. Download LUPTZControl.zip, unzip, and move LU PTZ Control to Applications. The first time, right-click the app and choose Open." \
+            --target "$GITHUB_SHA"
