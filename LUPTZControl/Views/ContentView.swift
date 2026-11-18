@@ -4,6 +4,11 @@ struct ContentView: View {
     @EnvironmentObject private var store: CameraStore
     @State private var selection: Camera.ID?
     @State private var showingFinder = false
+    @AppStorage("layout") private var layout: Layout = .single
+
+    enum Layout: String {
+        case single, grid
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -40,7 +45,9 @@ struct ContentView: View {
                 }
             }
         } detail: {
-            if let id = selection, let camera = store.cameras.first(where: { $0.id == id }) {
+            if layout == .grid && !store.cameras.isEmpty {
+                GridLayoutView(selection: $selection)
+            } else if let id = selection, let camera = store.cameras.first(where: { $0.id == id }) {
                 CameraDetailView(camera: camera)
                     .id(camera) // rebuilds when the camera's settings change
             } else {
@@ -51,6 +58,16 @@ struct ContentView: View {
                 } actions: {
                     Button("Find Cameras") { showingFinder = true }
                 }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("Layout", selection: $layout) {
+                    Label("Single", systemImage: "rectangle").tag(Layout.single)
+                    Label("Grid", systemImage: "square.grid.2x2").tag(Layout.grid)
+                }
+                .pickerStyle(.segmented)
+                .help("Show one camera, or all cameras in a grid")
             }
         }
         .sheet(isPresented: $showingFinder) {
