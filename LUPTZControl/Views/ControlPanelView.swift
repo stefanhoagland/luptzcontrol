@@ -53,6 +53,11 @@ struct ControlPanelView: View {
                 case .lens: LensPanel(controller: controller)
                 case .image: ImagePanel(controller: controller)
                 }
+
+                Text("Keys: arrows move (Shift = fast) · + / − zoom · 1–9, 0 presets · [ ] prev/next · F push AF · T tally. Gamepads work too.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(16)
         }

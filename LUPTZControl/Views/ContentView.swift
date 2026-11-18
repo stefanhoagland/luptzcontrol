@@ -77,6 +77,8 @@ struct ContentView: View {
             .environmentObject(store)
         }
         .onAppear {
+            KeyboardControl.shared.install()
+            GamepadManager.shared.start()
             if store.cameras.isEmpty {
                 showingFinder = true
             } else if selection == nil {
