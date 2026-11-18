@@ -164,3 +164,71 @@ extension PanasonicClient {
         try await ptz("#DA\(on ? 1 : 0)")
     }
 }
+
+// MARK: - Lens and image
+
+extension PanasonicClient {
+    /// Panasonic absolute lens positions are 3 hex digits from 555 to FFF.
+    static func lensCode(_ value: Double) -> String {
+        let clamped = min(max(value, 0), 1)
+        return String(format: "%03X", 0x555 + Int((clamped * Double(0xFFF - 0x555)).rounded()))
+    }
+
+    static func parseLens(_ reply: String, prefix: String) -> Double? {
+        guard reply.hasPrefix(prefix) else { return nil }
+        guard let raw = Int(reply.dropFirst(prefix.count).prefix(3), radix: 16) else { return nil }
+        return min(max(Double(raw - 0x555) / Double(0xFFF - 0x555), 0), 1)
+    }
+
+    /// 0 = near, 1 = far.
+    func focusPosition() async throws -> Double? {
+        Self.parseLens(try await ptz("#GF"), prefix: "gf")
+    }
+
+    func setFocusPosition(_ value: Double) async throws {
+        try await ptz("#AXF\(Self.lensCode(value))")
+    }
+
+    /// One-push autofocus while in manual focus.
+    func pushAutoFocus() async throws {
+        try await cam("OSE:69:1")
+    }
+
+    func setAutoIris(_ on: Bool) async throws {
+        try await ptz("#D3\(on ? 1 : 0)")
+    }
+
+    func isAutoIris() async throws -> Bool {
+        try await ptz("#D3") == "d31"
+    }
+
+    /// 0 = closed, 1 = open.
+    func irisPosition() async throws -> Double? {
+        Self.parseLens(try await ptz("#GI"), prefix: "gi")
+    }
+
+    func setIrisPosition(_ value: Double) async throws {
+        try await ptz("#AXI\(Self.lensCode(value))")
+    }
+
+    /// Reads a camera setting such as "AW" (white balance). "OAW:1" comes back as "1".
+    func setting(_ code: String) async throws -> String {
+        let reply = try await cam("Q\(code)")
+        guard let colon = reply.firstIndex(of: ":") else { return reply }
+        return String(reply[reply.index(after: colon)...])
+    }
+
+    func setSetting(_ code: String, to value: String) async throws {
+        try await cam("O\(code):\(value)")
+    }
+
+    /// Runs auto white balance (AWB) once.
+    func whiteBalanceSet() async throws {
+        try await cam("OWS")
+    }
+
+    /// Runs auto black balance (ABB) once.
+    func blackBalanceSet() async throws {
+        try await cam("OAS")
+    }
+}

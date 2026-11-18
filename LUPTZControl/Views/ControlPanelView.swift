@@ -3,6 +3,12 @@ import SwiftUI
 struct ControlPanelView: View {
     @ObservedObject var controller: CameraController
     @State private var storeMode = false
+    @State private var tab: Tab = .presets
+
+    enum Tab: String, CaseIterable, Identifiable {
+        case presets = "Presets", lens = "Lens", image = "Image"
+        var id: String { rawValue }
+    }
 
     var body: some View {
         ScrollView {
@@ -36,32 +42,38 @@ struct ControlPanelView: View {
                     RockerView(leftLabel: "W", rightLabel: "T") { controller.setZoom($0) }
                 }
 
-                PanelSection("Focus") {
-                    Toggle("Auto focus", isOn: Binding(get: { controller.autoFocus },
-                                                      set: { controller.setAutoFocus($0) }))
-                    RockerView(leftLabel: "Near", rightLabel: "Far") { controller.setFocus($0) }
-                        .disabled(controller.autoFocus)
-                        .opacity(controller.autoFocus ? 0.4 : 1)
+                Picker("", selection: $tab) {
+                    ForEach(Tab.allCases) { Text($0.rawValue).tag($0) }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
 
-                PanelSection("Presets") {
-                    Toggle(isOn: $storeMode) {
-                        Label(storeMode ? "Tap a number to save the current shot" : "Save mode",
-                              systemImage: "square.and.arrow.down")
-                    }
-                    .toggleStyle(.button)
-                    .tint(storeMode ? Color.orange : nil)
-                    PresetGridView(highlighted: controller.lastPreset, storeMode: storeMode) { number in
-                        if storeMode {
-                            controller.savePreset(number)
-                            storeMode = false
-                        } else {
-                            controller.recallPreset(number)
-                        }
-                    }
+                switch tab {
+                case .presets: presets
+                case .lens: LensPanel(controller: controller)
+                case .image: ImagePanel(controller: controller)
                 }
             }
             .padding(16)
+        }
+    }
+
+    private var presets: some View {
+        PanelSection("Presets") {
+            Toggle(isOn: $storeMode) {
+                Label(storeMode ? "Tap a number to save the current shot" : "Save mode",
+                      systemImage: "square.and.arrow.down")
+            }
+            .toggleStyle(.button)
+            .tint(storeMode ? Color.orange : nil)
+            PresetGridView(highlighted: controller.lastPreset, storeMode: storeMode) { number in
+                if storeMode {
+                    controller.savePreset(number)
+                    storeMode = false
+                } else {
+                    controller.recallPreset(number)
+                }
+            }
         }
     }
 
@@ -74,7 +86,7 @@ struct ControlPanelView: View {
     }
 }
 
-private struct PanelSection<Content: View>: View {
+struct PanelSection<Content: View>: View {
     let title: String
     let content: Content
 

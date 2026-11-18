@@ -1,17 +1,30 @@
 import Foundation
 
-/// Drives one camera: sends joystick, zoom and focus movement at a safe rate,
-/// plus one-off commands such as presets and power.
+/// Drives one camera: sends joystick, zoom, focus and iris movement at a safe rate,
+/// plus one-off commands such as presets, power and image settings.
 @MainActor
 final class CameraController: ObservableObject {
     @Published private(set) var camera: Camera
     @Published var lastError: String?
     @Published private(set) var isPoweredOn: Bool?
     @Published private(set) var autoFocus = true
+    @Published private(set) var autoIris = true
     @Published private(set) var tallyOn = false
     @Published private(set) var lastPreset: Int?
     /// 0.1...1, scales the joystick's top speed.
     @Published var speedLimit: Double = 0.7
+
+    /// Live lens positions, 0...1. nil until the camera reports them.
+    @Published private(set) var focusPosition: Double?
+    @Published private(set) var irisPosition: Double?
+    /// True while the user drags a slider, so live updates don't fight the drag.
+    var isDraggingFocus = false
+    var isDraggingIris = false
+
+    /// Current value of each ImageSetting, by code.
+    @Published private(set) var settingValues: [String: String] = [:]
+    /// Settings this camera answered with an error (not supported on this model).
+    @Published private(set) var unsupportedSettings: Set<String> = []
 
     let client: PanasonicClient
     let video: VideoFeed
@@ -21,7 +34,10 @@ final class CameraController: ObservableObject {
     }
     private var wanted = Motion()
     private var sent = Motion()
+    private var wantedFocusPosition: Double?
+    private var wantedIrisPosition: Double?
     private var loop: Task<Void, Never>?
+    private var idleTicks = 0
 
     /// Panasonic asks for at least 130 ms between commands to the same camera.
     private let commandInterval: UInt64 = 130_000_000
@@ -36,13 +52,13 @@ final class CameraController: ObservableObject {
         video.start()
         guard loop == nil else { return }
         loop = Task { [weak self] in
+            await self?.refresh()
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.sendPendingMotion()
+                await self.tick()
                 try? await Task.sleep(nanoseconds: self.commandInterval)
             }
         }
-        Task { await refresh() }
     }
 
     func stop() {
@@ -64,10 +80,27 @@ final class CameraController: ObservableObject {
     func refresh() async {
         do {
             isPoweredOn = try await client.isPoweredOn()
-            autoFocus = try await client.isAutoFocus()
             lastError = nil
         } catch {
             lastError = error.localizedDescription
+        }
+        autoFocus = (try? await client.isAutoFocus()) ?? autoFocus
+        autoIris = (try? await client.isAutoIris()) ?? autoIris
+        focusPosition = (try? await client.focusPosition()) ?? focusPosition
+        irisPosition = (try? await client.irisPosition()) ?? irisPosition
+        await loadSettings()
+    }
+
+    func loadSettings() async {
+        for setting in ImageSetting.all {
+            do {
+                settingValues[setting.code] = try await client.setting(setting.code)
+                unsupportedSettings.remove(setting.code)
+            } catch PanasonicError.camera(_) {
+                unsupportedSettings.insert(setting.code)
+            } catch {
+                // Network trouble: keep what we had.
+            }
         }
     }
 
@@ -86,6 +119,18 @@ final class CameraController: ObservableObject {
         wanted.focus = Self.speed(value, limit: 0.6)
     }
 
+    /// Absolute focus, 0 = near, 1 = far. Sent at the safe command rate.
+    func setFocusPosition(_ value: Double) {
+        focusPosition = value
+        wantedFocusPosition = value
+    }
+
+    /// Absolute iris, 0 = closed, 1 = open.
+    func setIrisPosition(_ value: Double) {
+        irisPosition = value
+        wantedIrisPosition = value
+    }
+
     /// Curved response: fine control near the center, full speed at the edge.
     private static func speed(_ value: Double, limit: Double) -> Int {
         let clamped = min(max(value, -1), 1)
@@ -93,7 +138,9 @@ final class CameraController: ObservableObject {
         return Int((curved * 49 * limit).rounded())
     }
 
-    private func sendPendingMotion() async {
+    /// Sends at most one command per tick: movement first, then lens positions,
+    /// and when idle, reads back the lens positions about once a second.
+    private func tick() async {
         let target = wanted
         do {
             if target.pan != sent.pan || target.tilt != sent.tilt {
@@ -106,12 +153,31 @@ final class CameraController: ObservableObject {
             } else if target.focus != sent.focus {
                 try await client.focus(speed: target.focus)
                 sent.focus = target.focus
+            } else if let value = wantedFocusPosition {
+                wantedFocusPosition = nil
+                try await client.setFocusPosition(value)
+            } else if let value = wantedIrisPosition {
+                wantedIrisPosition = nil
+                try await client.setIrisPosition(value)
             } else {
+                idleTicks += 1
+                if idleTicks % 8 == 0 { await pollLens(focus: idleTicks % 16 == 0) }
                 return
             }
+            idleTicks = 0
             lastError = nil
         } catch {
             lastError = error.localizedDescription
+        }
+    }
+
+    private func pollLens(focus: Bool) async {
+        if focus {
+            guard !isDraggingFocus, let value = try? await client.focusPosition() else { return }
+            if !isDraggingFocus && wantedFocusPosition == nil { focusPosition = value }
+        } else {
+            guard !isDraggingIris, let value = try? await client.irisPosition() else { return }
+            if !isDraggingIris && wantedIrisPosition == nil { irisPosition = value }
         }
     }
 
@@ -142,6 +208,38 @@ final class CameraController: ObservableObject {
     func setAutoFocus(_ on: Bool) {
         run { try await $0.setAutoFocus(on) }
         autoFocus = on
+    }
+
+    func pushAutoFocus() {
+        run { try await $0.pushAutoFocus() }
+    }
+
+    func setAutoIris(_ on: Bool) {
+        run { try await $0.setAutoIris(on) }
+        autoIris = on
+    }
+
+    func set(_ setting: ImageSetting, to value: String) {
+        let previous = settingValues[setting.code]
+        settingValues[setting.code] = value
+        let code = setting.code
+        Task {
+            do {
+                try await client.setSetting(code, to: value)
+                lastError = nil
+            } catch {
+                settingValues[code] = previous
+                lastError = error.localizedDescription
+            }
+        }
+    }
+
+    func whiteBalanceSet() {
+        run { try await $0.whiteBalanceSet() }
+    }
+
+    func blackBalanceSet() {
+        run { try await $0.blackBalanceSet() }
     }
 
     private func run(_ action: @escaping (PanasonicClient) async throws -> Void) {
