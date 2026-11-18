@@ -50,6 +50,7 @@ final class CameraController: ObservableObject {
 
     /// withVideo: false when the video is shown elsewhere (the grid view).
     func start(withVideo: Bool = true) {
+        InputRouter.shared.active = self
         if withVideo { video.start() }
         guard loop == nil else { return }
         loop = Task { [weak self] in
@@ -63,6 +64,7 @@ final class CameraController: ObservableObject {
     }
 
     func stop() {
+        if InputRouter.shared.active === self { InputRouter.shared.active = nil }
         wanted = Motion()
         let client = self.client
         // Make sure the camera stops moving when we leave.
@@ -187,6 +189,12 @@ final class CameraController: ObservableObject {
     func recallPreset(_ number: Int) {
         run { try await $0.recallPreset(number) }
         lastPreset = number
+    }
+
+    /// Recalls the preset before or after the last one used.
+    func stepPreset(_ delta: Int) {
+        let next = min(max((lastPreset ?? 0) + delta, 1), 100)
+        recallPreset(next)
     }
 
     func savePreset(_ number: Int) {

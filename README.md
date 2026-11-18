@@ -34,6 +34,25 @@ and full camera controls, similar to Panasonic PTZ Control Center.
 Control uses Panasonic's HTTP CGI commands (`/cgi-bin/aw_ptz`, `/cgi-bin/aw_cam`), sent no faster
 than every 130 ms per camera as Panasonic recommends.
 
+## Keyboard, gamepad and Stream Deck
+
+Keyboard (the app window must be in front):
+
+| Key | Action |
+| --- | --- |
+| Arrow keys (hold) | Pan / tilt. Hold Shift for full speed |
+| `+` / `-` (hold) | Zoom in / out |
+| `1`–`9`, `0` | Recall presets 1–10 |
+| `[` / `]` | Previous / next preset |
+| `F` | Push autofocus |
+| `T` | Toggle tally |
+
+Gamepad (Xbox, PlayStation and other controllers macOS supports): left stick pan/tilt,
+right stick zoom, L2/R2 focus near/far, L1/R1 previous/next preset, D-pad presets 1–4,
+A push AF, Y tally.
+
+Stream Deck: add a **Hotkey** action for any of the keys above, e.g. `1` to recall preset 1.
+
 ## Scanning cameras from Terminal (optional)
 
 ```bash
