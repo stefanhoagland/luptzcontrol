@@ -1,3 +1,5 @@
+<img src="docs/icon.png" width="128" align="right" alt="">
+
 # LU PTZ Control
 
 A Mac app (iPad later) for controlling Panasonic PTZ cameras (AW-UE150 and others) with live video

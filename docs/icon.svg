@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#25384c"/>
+      <stop offset="1" stop-color="#0a1016"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4f6f8"/>
+      <stop offset="1" stop-color="#b9c1ca"/>
+    </linearGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a5563"/>
+      <stop offset="1" stop-color="#1c222a"/>
+    </linearGradient>
+    <radialGradient id="glass" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#6cc3ff"/>
+      <stop offset="0.45" stop-color="#1e6fc4"/>
+      <stop offset="1" stop-color="#061a36"/>
+    </radialGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="2.6" markerHeight="2.6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#ff9f1c"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- macOS rounded-square tile -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="3"/>
+
+  <!-- pan / tilt arrows -->
+  <path d="M302,372 A232,232 0 0 1 722,372" fill="none" stroke="#ff9f1c" stroke-width="24" stroke-linecap="round" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <g filter="url(#shadow)">
+    <!-- base -->
+    <rect x="352" y="742" width="320" height="72" rx="26" fill="url(#metal)"/>
+    <!-- yoke -->
+    <path d="M362,500 L362,700 Q362,742 404,742 L620,742 Q662,742 662,700 L662,500"
+          fill="none" stroke="url(#metal)" stroke-width="52" stroke-linecap="round"/>
+    <!-- camera head -->
+    <circle cx="512" cy="520" r="150" fill="url(#head)" stroke="#6b7887" stroke-width="5"/>
+    <!-- lens -->
+    <circle cx="512" cy="520" r="100" fill="#0b0f14" stroke="#7d8a99" stroke-width="7"/>
+    <circle cx="512" cy="520" r="70" fill="url(#glass)"/>
+    <ellipse cx="486" cy="492" rx="22" ry="14" fill="#ffffff" fill-opacity="0.55" transform="rotate(-30 486 492)"/>
+    <!-- tally lamp -->
+    <circle cx="512" cy="392" r="13" fill="#ff3b30"/>
+  </g>
+</svg>
